@@ -1,3 +1,6 @@
 [submodule "sandbox/sandbox/ica_day06-lowell-monis"]
 	path = sandbox/sandbox/ica_day06-lowell-monis
 	url = https://github.com/msu-cmse-courses/ica_day06-lowell-monis
+[submodule "sandbox/pca_day08-lowell-monis"]
+	path = sandbox/pca_day08-lowell-monis
+	url = https://github.com/msu-cmse-courses/pca_day08-lowell-monis
