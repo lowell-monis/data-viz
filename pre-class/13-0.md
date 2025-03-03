@@ -1,0 +1,10 @@
+# CMSE 402: Data Visualization Principles and Techniques
+## Lowell Monis
+## Spring 2025 - Dr. Devin Silvia and Dr. Christian Parkinson
+
+***
+### Pre-Class Assignment (Day 13 - February 27, 2025)
+
+Tableau makes creating base data visualizations easy. The drag-and-drop functionality is great. Customizing data visualizations has a slight learning curve in terms of accessibility. I prefer `matplotlib` or `ggplot2`, and I would probably use it over Tableau for easier customization, but that is because I am used to them. I have a lot more to explore in Tableau so maybe I will like it later, but not anytime soon. I would probably use Tableau over `plotly` for interactive visualizations because interactivity is sort of preset with Tableau. I would probably use it when I am on a time crunch and quality is not a priority, which is possibly why a lot of business analysts use this, and why Tablue and Power BI are primarily business intelligence tools.
+
+Cairo would probably acknowledge Tableau's ability to make data visualization accessible to non-specialists, as some people I interviewed noted (Homework 1). He'd appreciate its capabilities for creating interactive, exploratory visualizations that align with his "functional art" philosophy. However, he might critique instances where Tableau's default settings lead to things that don't enhance understanding, which is his focus, as he advocates for visualizations that balance aesthetic appeal with analytical clarity. Tufte would likely hate Tableau and criticize its default templates for allowing much more chartjunk. Tufte's minimalist approach emphasizes high data-ink ratios and avoids what he calls "administrative graphics." He might argue that Tableau often makes it too easy to create visually complex charts that don't necessarily improve data communication.
