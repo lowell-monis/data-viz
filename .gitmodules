@@ -37,3 +37,6 @@
 [submodule "sandbox/pca_day14-lowell-monis"]
 	path = sandbox/pca_day14-lowell-monis
 	url = https://github.com/msu-cmse-courses/pca_day14-lowell-monis
+[submodule "sandbox/pca_day15-lowell-monis"]
+	path = sandbox/pca_day15-lowell-monis
+	url = https://github.com/msu-cmse-courses/pca_day15-lowell-monis
