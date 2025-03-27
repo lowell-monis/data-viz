@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Dataset Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #ff0050;
+        }
+        .chart-container {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background-color: white;
+            transition: all 0.3s ease;
+        }
+        .chart-container:hover {
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #ff0050;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TikTok Video Reports Analysis</h1>
+        <div id="loading" class="loading">Loading data...</div>
+        
+        <div id="content" style="display: none;">
+            <div class="grid">
+                <div class="chart-container" id="durationChart">
+                    <h2>Video Duration Distribution</h2>
+                </div>
+                <div class="chart-container" id="engagementCorrelation">
+                    <h2>Engagement Metrics Correlation</h2>
+                </div>
+            </div>
+            
+            <div class="chart-container" id="statusComparison">
+                <h2>Engagement by Verification Status</h2>
+                <div>
+                    <label for="metricSelect">Select Metric:</label>
+                    <select id="metricSelect">
+                        <option value="video_view_count">Views</option>
+                        <option value="video_like_count">Likes</option>
+                        <option value="video_share_count">Shares</option>
+                        <option value="video_download_count">Downloads</option>
+                        <option value="video_comment_count">Comments</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid">
+                <div class="chart-container" id="banStatusChart">
+                    <h2>Author Ban Status Distribution</h2>
+                </div>
+                <div class="chart-container" id="textLengthChart">
+                    <h2>Text Length vs. Views</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load and process data
+        d3.csv("tiktok_dataset.csv").then(function(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            
+            // Process data
+            const processedData = processData(data);
+            
+            // Create visualizations
+            createDurationChart(processedData);
+            createEngagementCorrelation(processedData);
+            setupStatusComparison(processedData);
+            createBanStatusChart(processedData);
+            createTextLengthChart(processedData);
+            
+        }).catch(function(error) {
+            document.getElementById('loading').textContent = 'Error loading data: ' + error;
+            console.error("Error loading CSV:", error);
+        });
+
+        function processData(data) {
+            // Convert string numbers to actual numbers
+            data.forEach(d => {
+                d.video_duration_sec = +d.video_duration_sec;
+                d.video_view_count = +d.video_view_count;
+                d.video_like_count = +d.video_like_count;
+                d.video_share_count = +d.video_share_count;
+                d.video_download_count = +d.video_download_count;
+                d.video_comment_count = +d.video_comment_count;
+                d.text_length = d.video_transcription_text ? d.video_transcription_text.length : 0;
+            });
+
+            // Calculate duration bins (10-second intervals)
+            const maxDuration = d3.max(data, d => d.video_duration_sec);
+            const durationBins = Array.from({length: Math.ceil(maxDuration/10)}, (_, i) => (i+1)*10);
+            const durationCounts = Array(durationBins.length).fill(0);
+            
+            data.forEach(d => {
+                const binIndex = Math.floor(d.video_duration_sec/10);
+                if (binIndex < durationCounts.length) {
+                    durationCounts[binIndex]++;
+                }
+            });
+
+            // Group by verification status
+            const verifiedData = data.filter(d => d.verified_status === 'verified');
+            const notVerifiedData = data.filter(d => d.verified_status !== 'verified');
+
+            // Calculate correlation matrix
+            const metrics = ['video_view_count', 'video_like_count', 'video_share_count', 
+                           'video_download_count', 'video_comment_count'];
+            const correlationMatrix = calculateCorrelationMatrix(data, metrics);
+
+            return {
+                rawData: data,
+                durations: durationBins,
+                durationCounts: durationCounts,
+                verifiedData: verifiedData,
+                notVerifiedData: notVerifiedData,
+                correlationMatrix: {
+                    metrics: ['Views', 'Likes', 'Shares', 'Downloads', 'Comments'],
+                    values: correlationMatrix
+                },
+                banStatusCounts: d3.rollup(data, v => v.length, d => d.author_ban_status)
+            };
+        }
+
+        function calculateCorrelationMatrix(data, metrics) {
+            const matrix = [];
+            for (let i = 0; i < metrics.length; i++) {
+                matrix[i] = [];
+                for (let j = 0; j < metrics.length; j++) {
+                    if (i === j) {
+                        matrix[i][j] = 1.0;
+                    } else {
+                        const x = data.map(d => d[metrics[i]]);
+                        const y = data.map(d => d[metrics[j]]);
+                        matrix[i][j] = pearsonCorrelation(x, y);
+                    }
+                }
+            }
+            return matrix;
+        }
+
+        function pearsonCorrelation(x, y) {
+            const n = x.length;
+            const meanX = d3.mean(x);
+            const meanY = d3.mean(y);
+            
+            let num = 0;
+            let denomX = 0;
+            let denomY = 0;
+            
+            for (let i = 0; i < n; i++) {
+                num += (x[i] - meanX) * (y[i] - meanY);
+                denomX += Math.pow(x[i] - meanX, 2);
+                denomY += Math.pow(y[i] - meanY, 2);
+            }
+            
+            denomX = Math.sqrt(denomX);
+            denomY = Math.sqrt(denomY);
+            
+            return num / (denomX * denomY);
+        }
+
+        function createDurationChart(data) {
+            Plotly.newPlot('durationChart', [{
+                x: data.durations,
+                y: data.durationCounts,
+                type: 'bar',
+                marker: {
+                    color: '#ff0050',
+                    opacity: 0.7
+                },
+                hoverinfo: 'y',
+                name: 'Video Count'
+            }], {
+                title: 'Video Duration Distribution',
+                xaxis: { title: 'Duration (seconds)' },
+                yaxis: { title: 'Number of Videos' },
+                hovermode: 'closest'
+            });
+        }
+
+        function createEngagementCorrelation(data) {
+            Plotly.newPlot('engagementCorrelation', [{
+                z: data.correlationMatrix.values,
+                x: data.correlationMatrix.metrics,
+                y: data.correlationMatrix.metrics,
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                reversescale: true,
+                zmin: 0,
+                zmax: 1,
+                hoverongaps: false
+            }], {
+                title: 'Engagement Metrics Correlation',
+                xaxis: { side: 'bottom' },
+                margin: { t: 30, b: 80 }
+            });
+        }
+
+        function setupStatusComparison(data) {
+            function updateMetricChart(metric) {
+                const verifiedData = data.verifiedData.map(d => d[metric]);
+                const notVerifiedData = data.notVerifiedData.map(d => d[metric]);
+                
+                const trace1 = {
+                    y: verifiedData,
+                    type: 'box',
+                    name: 'Verified',
+                    boxpoints: 'all',
+                    jitter: 0.3,
+                    pointpos: -1.8,
+                    marker: {
+                        color: '#ff0050',
+                        size: 5
+                    },
+                    line: {
+                        color: '#ff0050'
+                    }
+                };
+                
+                const trace2 = {
+                    y: notVerifiedData,
+                    type: 'box',
+                    name: 'Not Verified',
+                    boxpoints: 'all',
+                    jitter: 0.3,
+                    pointpos: -1.8,
+                    marker: {
+                        color: '#25f4ee',
+                        size: 5
+                    },
+                    line: {
+                        color: '#25f4ee'
+                    }
+                };
+                
+                const layout = {
+                    title: `${metric.replace('_', ' ').toUpperCase()} by Verification Status`,
+                    yaxis: {
+                        title: metric.replace('_', ' ').toUpperCase(),
+                        type: 'log'
+                    },
+                    showlegend: true
+                };
+                
+                Plotly.newPlot('statusComparison', [trace1, trace2], layout);
+            }
+
+            // Initial plot
+            updateMetricChart('video_view_count');
+            
+            // Dropdown change handler
+            document.getElementById('metricSelect').addEventListener('change', function() {
+                updateMetricChart(this.value);
+            });
+        }
+
+        function createBanStatusChart(data) {
+            const statuses = Array.from(data.banStatusCounts.keys());
+            const counts = Array.from(data.banStatusCounts.values());
+            
+            Plotly.newPlot('banStatusChart', [{
+                values: counts,
+                labels: statuses,
+                type: 'pie',
+                marker: {
+                    colors: ['#25f4ee', '#fe2c55', '#000000']
+                },
+                textinfo: 'percent+label',
+                hoverinfo: 'label+percent+value',
+                hole: 0.4,
+                rotation: 45
+            }], {
+                title: 'Author Ban Status Distribution'
+            });
+        }
+
+        function createTextLengthChart(data) {
+            const trace = {
+                x: data.rawData.map(d => d.text_length),
+                y: data.rawData.map(d => d.video_view_count),
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    size: 8,
+                    color: '#ff0050',
+                    opacity: 0.5,
+                    line: {
+                        color: '#ffffff',
+                        width: 1
+                    }
+                },
+                hoverinfo: 'x+y'
+            };
+
+            const layout = {
+                title: 'Transcription Text Length vs. Views',
+                xaxis: { title: 'Text Length (characters)' },
+                yaxis: { title: 'Views', type: 'log' },
+                hovermode: 'closest'
+            };
+
+            Plotly.newPlot('textLengthChart', [trace], layout);
+
+            // Add animation to scatter plot
+            let angle = 0;
+            setInterval(() => {
+                angle += 0.02;
+                const newColor = `hsl(${angle * 50}, 100%, 50%)`;
+                
+                Plotly.animate('textLengthChart', {
+                    data: [{ marker: { color: newColor } }],
+                    traces: [0],
+                    layout: {}
+                }, {
+                    transition: {
+                        duration: 500,
+                        easing: 'cubic-in-out'
+                    },
+                    frame: {
+                        duration: 500,
+                        redraw: false
+                    }
+                });
+            }, 100);
+        }
+    </script>
+</body>
+</html>
